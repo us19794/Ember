@@ -27,11 +27,31 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: 8.13
-          build-root-directory: Ember
 
       - name: Build debug APK
+        shell: bash
         working-directory: Ember
-        run: gradle :app:assembleDebug --stacktrace
+        run: gradle :app:assembleDebug --stacktrace --console=plain 2>&1 | tee build.log
+
+      - name: Show error summary
+        if: failure()
+        shell: bash
+        working-directory: Ember
+        run: |
+          {
+            echo '### Build errors'
+            echo '```'
+            if [ -f build.log ]; then
+              if grep -qE "What went wrong|^e: " build.log; then
+                grep -E -A12 "What went wrong|^e: " build.log | head -n 60
+              else
+                tail -n 60 build.log
+              fi
+            else
+              echo "No build log (the failure happened before Gradle started)"
+            fi
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - uses: actions/upload-artifact@v4
         with:
